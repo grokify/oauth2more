@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/grokify/gotilla/fmt/fmtutil"
 	"github.com/grokify/oauth2more/ringcentral"
+	"github.com/grokify/simplego/fmt/fmtutil"
 	"github.com/jessevdk/go-flags"
 	log "github.com/sirupsen/logrus"
 )
