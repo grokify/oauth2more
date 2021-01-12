@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/grokify/oauth2more/ringcentral"
 	"github.com/grokify/simplego/fmt/fmtutil"
 	"github.com/jessevdk/go-flags"
-	log "github.com/sirupsen/logrus"
-
-	"go.uber.org/zap"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type Options struct {
@@ -17,32 +17,37 @@ type Options struct {
 }
 
 func main() {
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	opts := Options{}
 	_, err := flags.Parse(&opts)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().
+			Err(err).
+			Msg("failed to parse CLI options")
 	}
 
 	credsSet, err := ringcentral.ReadFileCredentialsSet(opts.CredsPath)
 	if err != nil {
-		logger.Fatal("failed to read creds file",
-			zap.String("filepath", opts.CredsPath),
-			zap.String("err", err.Error()))
+		log.Fatal().
+			Err(err).
+			Str("filepath", opts.CredsPath).
+			Msg("failed to read creds file")
 	}
 	creds, err := credsSet.Get(opts.AccountKey)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().
+			Err(err).
+			Msg("failed to get credentials from credentialset")
 	}
 
 	token, err := ringcentral.NewTokenCli(creds, "mystate")
 	if err != nil {
-		logger.Fatal("failed to get new token",
-			zap.String("filepath", opts.CredsPath),
-			zap.String("account", opts.AccountKey),
-			zap.String("err", err.Error()))
+		log.Fatal().
+			Err(err).
+			Str("filepath", opts.CredsPath).
+			Str("account", opts.AccountKey).
+			Msg("failed to get new token")
 	}
 
 	fmtutil.PrintJSON(token)
