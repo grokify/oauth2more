@@ -7,14 +7,19 @@ import (
 	"github.com/grokify/simplego/fmt/fmtutil"
 	"github.com/jessevdk/go-flags"
 	log "github.com/sirupsen/logrus"
+
+	"go.uber.org/zap"
 )
 
 type Options struct {
-	CredsPath string `short:"c" long:"credspath" description:"RingCentral Credentials File" required:"true"`
-	CredsVar  string `short:"v" long:"credsvar" description:"RingCentral Credentials File Entry" required:"true"`
+	CredsPath  string `short:"c" long:"credspath" description:"RingCentral Credentials File" required:"true"`
+	AccountKey string `short:"a" long:"account" description:"RingCentral Credentials File Entry" required:"true"`
 }
 
 func main() {
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+
 	opts := Options{}
 	_, err := flags.Parse(&opts)
 	if err != nil {
@@ -23,49 +28,24 @@ func main() {
 
 	credsSet, err := ringcentral.ReadFileCredentialsSet(opts.CredsPath)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("failed to read creds file",
+			zap.String("filepath", opts.CredsPath),
+			zap.String("err", err.Error()))
 	}
-	creds, err := credsSet.Get(opts.CredsVar)
-	if err != nil {
-		log.Fatal(err)
-	}
-	token, err := creds.NewToken()
+	creds, err := credsSet.Get(opts.AccountKey)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	token.Expiry = token.Expiry.UTC()
+	token, err := ringcentral.NewTokenCli(creds, "mystate")
+	if err != nil {
+		logger.Fatal("failed to get new token",
+			zap.String("filepath", opts.CredsPath),
+			zap.String("account", opts.AccountKey),
+			zap.String("err", err.Error()))
+	}
 
 	fmtutil.PrintJSON(token)
-	/*
-		files, err := config.LoadDotEnv(opts.EnvPath, os.Getenv("ENV_PATH"), "./.env")
-		if err != nil {
-			log.Fatal(errors.Wrap(err, "E_LOAD_DOT_ENV"))
-		}
-		fmtutil.PrintJSON(files)
 
-		if len(opts.EnvVar) > 0 {
-			if len(os.Getenv(opts.EnvVar)) == 0 {
-				log.Fatal("E_NO_VAR")
-			}
-
-			credentials, err := ringcentral.NewCredentialsJSON([]byte(os.Getenv(opts.EnvVar)))
-			if err != nil {
-				log.Fatal(
-					errors.Wrap(
-						err, fmt.Sprintf("E_JSON_UNMARSHAL [%v]", os.Getenv(opts.EnvVar))))
-			}
-			token, err := credentials.NewToken()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			token.Expiry = token.Expiry.UTC()
-
-			fmtutil.PrintJSON(token)
-		} else {
-			fmt.Printf("No EnvVar [-v]\n")
-		}
-	*/
 	fmt.Println("DONE")
 }
